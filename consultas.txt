@@ -1,0 +1,84 @@
+Consultas requerimientos
+
+#########################################################
+3.1 
+
+# Verificar auxiliar
+# Se hace de esa manera para poder seleccionar la FECHACARGO
+# más reciente
+
+SELECT * FROM
+    (
+        SELECT A.CODEMPLEADO CODIGO, A.NOMEMPLEADO NOMBRE,
+        C.DESCARGO CARGO, E.NOMESPACIO SEDE
+        FROM EMPLEADO A, EMPLEADO_CARGO EA, CARGO C, ESPACIO E, TIPOESPACIO TE
+        WHERE A.CODEMPLEADO = EA.CODCOMPLEADO AND
+        EA.IDCARGO = C.IDCARGO AND EA.CODESPACIO = E.CODESPACIO
+        AND E.IDTIPOESPACIO = TE.IDTIPOESPACIO
+        AND LOWER(TIPOESPACIO) LIKE 'sede%'
+        AND LOWER(C.DESCARGO) LIKE
+        'auxiliar%' AND EA.FECHAFINCAR IS NULL
+
+    !   AND A.CODEMPLEADO = :id
+        ORDER BY EA.FECHACARGO DESC
+    )
+WHERE ROWNUM = 1;
+###############################################################
+
+###############################################################
+
+3.2.1.1
+
+# Consulta nombre y apellido de docente
+
+SELECT * FROM
+    (
+        SELECT A.CODEMPLEADO CODIGO, A.NOMEMPLEADO NOMBRE,
+        C.DESCARGO CARGO, E.NOMESPACIO SEDE
+        FROM EMPLEADO A, EMPLEADO_CARGO EA, CARGO C, ESPACIO E, TIPOESPACIO TE
+        WHERE A.CODEMPLEADO = EA.CODCOMPLEADO AND
+        EA.IDCARGO = C.IDCARGO AND EA.CODESPACIO = E.CODESPACIO
+        AND E.IDTIPOESPACIO = TE.IDTIPOESPACIO
+    !   AND LOWER(TIPOESPACIO) LIKE :sede
+        AND LOWER(C.DESCARGO) LIKE
+        'docente%' AND EA.FECHAFINCAR IS NULL
+
+    !   AND LOWER(A.NOMEMPLEADO) LIKE :nomEmpleado
+        ORDER BY EA.FECHACARGO DESC
+    )
+WHERE ROWNUM = 1;
+
+SELECT H.IDHORA_INICIO  INICIO, , D.NOMDIA, 
+
+
+###############################################################
+
+###########################################################
+3.3
+# Verificar director deportivo
+# Se hace de esa manera para poder seleccionar la FECHACARGO
+# más reciente
+SELECT * FROM
+    (
+        SELECT A.CODEMPLEADO CODIGO, A.NOMEMPLEADO NOMBRE,
+        C.DESCARGO CARGO, E.NOMESPACIO SEDE
+        FROM EMPLEADO A, EMPLEADO_CARGO EA, CARGO C, ESPACIO E, TIPOESPACIO TE
+        WHERE A.CODEMPLEADO = EA.CODCOMPLEADO AND
+        EA.IDCARGO = C.IDCARGO AND EA.CODESPACIO = E.CODESPACIO
+        AND E.IDTIPOESPACIO = TE.IDTIPOESPACIO
+        AND LOWER(TIPOESPACIO) LIKE 'sede%'
+        AND LOWER(C.DESCARGO) LIKE
+        'director deportivo%' AND EA.FECHAFINCAR IS NULL
+
+    !   AND A.CODEMPLEADO = :id
+        ORDER BY EA.FECHACARGO DESC
+    )
+WHERE ROWNUM = 1;
+#########################################################
+
+
+
+
+requerimientos completados
+
+3.1
