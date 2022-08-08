@@ -1,0 +1,8 @@
+
+POST http://localhost:3001/api/docente/elementos
+Content-Type: application/json
+
+{
+    "SEDE": "Sede Macarena",
+    "DEPORTE": "Aerobicos"
+}

@@ -1,0 +1,12 @@
+// Test de petición de cursos del docente para el backend
+
+POST http://localhost:3001/api/docente
+Content-Type: application/json
+
+{
+    "NOMEMPLEADO": "Egan",
+    "APELLEMPLEADO": "Bernal",
+    "DIA": "LUNES",
+    "SEDE": "Sede Macarena",
+    "HORA": "8:00"
+}

@@ -10,10 +10,11 @@ import Card from 'react-bootstrap/Card';
  */
 
 const Principal = (props) => {
-    return (
-        <div>
-            {/* Si el usuario está autenticado */}
-            {props.autorizado && (
+    const usuario = props.autorizado[0];
+
+    const renderEmpleado = () => {
+        return (
+            <div>
                 <Container spacing={2} justify="center">
                     <Card style={{ width: '30rem' }}>
                         <Card.Body>
@@ -26,16 +27,21 @@ const Principal = (props) => {
                     </Card>
                     <Card style={{ width: '30rem' }}>
                         <Card.Body>
-                            <Card.Title>Información de auxiliar</Card.Title>
+                            <Card.Title>
+                                Información de {usuario.CARGO}
+                            </Card.Title>
 
                             <Card.Text>
                                 <strong> Nombre: </strong>
+                                {usuario.NOMBRE}
                             </Card.Text>
                             <Card.Text>
-                                <strong> Sede:</strong>
+                                <strong> Sede: </strong>
+                                {usuario.SEDE}
                             </Card.Text>
                             <Card.Text>
-                                <strong> Cargo:</strong>
+                                <strong> Cargo: </strong>
+                                {usuario.CARGO}
                             </Card.Text>
                             <Card.Text>
                                 <strong> Fecha: </strong>
@@ -44,9 +50,15 @@ const Principal = (props) => {
                         </Card.Body>
                     </Card>
                 </Container>
-            )}
+            </div>
+        );
+    };
+    return (
+        <div>
+            {/* Si el usuario está autenticado */}
+            {usuario && renderEmpleado()}
             {/* Si el usuario NO está autenticado */}
-            {!props.autorizado && (
+            {!usuario && (
                 <Container spacing={2} justify="center">
                     <Card style={{ width: '30rem' }}>
                         <Card.Body>

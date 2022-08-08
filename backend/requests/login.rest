@@ -1,0 +1,8 @@
+// Test de petición de login para el backend
+
+POST http://localhost:3001/api/login
+Content-Type: application/json
+
+{
+    "CODEMPLEADO": 8
+}
