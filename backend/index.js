@@ -4,6 +4,22 @@ const app = express();
 
 app.use(express.json());
 
+/** Constantes de cargos de empleados */
+const DIRECTOR_DEPORTIVO = '1';
+const DOCENTE = '2';
+const ENTRENADOR = '3';
+
+/** Consecutivos que se acumulan para
+ * insertar en las tablas correspondientes
+ */
+let CONSECRES = 0;
+let CONSECASISRES = 0;
+let CONSECPRESTAMO = 0;
+
+/** Constantes del estado de los elementos */
+const ACTIVO = '1';
+const PRESTADO = '2';
+
 /** Datos de conexión */
 const conn_data = {
     user: 'deportiva',
@@ -44,18 +60,22 @@ const consulta_curso_docente = `
 SELECT P.CONSECPROGRA COD, E.NOMESPACIO ESPACIO, 
     D.NOMDEPORTE DEPORTE, P.NOINSCRITO INSCRITOS,
     DOC.NOMEMPLEADO||' '||DOC.APELLEMPLEADO DOCENTE,
+    DOC.CODEMPLEADO CODEMPLEADO,
     P.IDHORA HORAINICIO, P.HOR_IDHORA HORAFIN, D.NOMDIA
 FROM ESPACIO E, TIPOESPACIO TE,
     DEPORTE D, PROGRAMACION P,
+    ACTIVIDAD A,
     EMPLEADO_CARGO EC, EMPLEADO DOC, DIA D, CARGO C
 WHERE P.IDDEPORTE = D.IDDEPORTE
     AND P.CODESPACIO = E.CODESPACIO
     AND E.CODESPACIO = EC.CODESPACIO
     AND EC.CODEMPLEADO = DOC.CODEMPLEADO
+    AND P.IDACTIVIDAD = A.IDACTIVIDAD
+    AND LOWER(P.IDACTIVIDAD) LIKE 'cu'
     AND P.IDDIA = D.IDDIA
     AND EC.IDCARGO = C.IDCARGO
-    AND LOWER(C.DESCARGO) LIKE 'docente%'
     AND E.IDTIPOESPACIO = TE.IDTIPOESPACIO
+    AND LOWER(C.DESCARGO) LIKE 'docente%'
     AND LOWER(E.NOMESPACIO) LIKE :sede
     AND (LOWER(DOC.NOMEMPLEADO||' '||DOC.APELLEMPLEADO))
     LIKE :nomempleado
@@ -76,7 +96,46 @@ WHERE ED.IDESTADO = E.IDESTADO
     AND LOWER(D.NOMDEPORTE) LIKE :deporte
     AND LOWER(ES.NOMESPACIO) LIKE :sede`;
 
-// const consulta_auxiliar = `SELECT * FROM EMPLEADO`;
+const insertar_responsable = `
+INSERT INTO RESPONSABLE
+    (CONSECPROGRA, CONSECRES, CODEMPLEADO, CODESTU,
+        IDROL,FECHAINI,FECHAFIN
+    )
+VALUES 
+    (:CONSECPROGRA, :CONSECRES, :CODEMPLEADO, :CODESTU,
+        :IDROL,TO_DATE(:FECHAINI, 'yyyy-mm-dd'),
+        TO_DATE(:FECHAFIN, 'yyyy-mm-dd')
+    )
+`;
+
+const insertar_asistir_responsable = `
+INSERT INTO ASISTIRRESPONSABLE
+    (CONSECPROGRA, CONSECRES, CONSECASISRES,
+        FECHAASISRES, HORAASISRES
+    )
+VALUES 
+    (:CONSECPROGRA, :CONSECRES, :CONSECASISRES,
+        TO_DATE(:FECHAASISRES, 'yyyy-mm-dd'),
+        TO_DATE(:HORAASISRES, 'yyyy-mm-dd hh24:mi:ss')
+    )
+`;
+
+const insertar_prestamo = `
+INSERT INTO PRESTAMO
+    (CONSECPRESTAMO,CONSECELEMENTO,CONSECPROGRA,
+        CONSECRES,CONSECASISRES
+    )
+VALUES
+    (:CONSECPRESTAMO,:CONSECELEMENTO,
+        :CONSECPROGRA,:CONSECRES,:CONSECASISRES   
+    )
+`;
+
+const actualzar_estado_elemento = `
+UPDATE ELEMENDEPORTIVO
+SET IDESTADO = :IDESTADO
+WHERE CONSECELEMENTO = :CONSECELEMENTO
+`;
 
 /**
  * Función que se encarga de determinar si el código de usuario
@@ -238,42 +297,101 @@ const prestar_elementos = async (req, res) => {
          */
         const body = req.body;
         const data = {
+            CONSECPROGRA: body.CONSECPROGRA,
+            CONSECRES: CONSECRES,
+            CODEMPLEADO: body.CODEMPLEADO,
+            IDROL: DOCENTE,
+            FECHAHORA: body.FECHAHORA,
             IDS: body.IDS,
         };
+        const fecha_responsable = data.FECHAHORA.split('T')[0];
+        console.log(fecha_responsable);
         /**
          * Formar la cadena para el filtro LIKE de la consulta
          * nombre&apellido
          */
+        console.log(data);
         console.log(data.IDS);
-        res.send({});
 
-        // conn = await oracledb.getConnection(conn_data);
-        // result = await conn.execute(
-        //     consulta_elementos_docente,
-        //     [data.DEPORTE, data.SEDE],
-        //     result_format
-        // );
-        // const rs = result.resultSet;
-        // let rows;
-        // do {
-        //     rows = await rs.getRows(100);
-        //     console.log(rows.length);
-        //     console.log(rows);
-        // } while (rows.length === 100);
-        // res.send(rows);
-        // await rs.close();
+        /** PARA AGREGAR REGISTRO EN ASISTIRRESPONSABLE
+         * HAY QUE HACER ESTE PROCESO:
+         * 1. INSERTAR REGISTRO EN RESPONSABLE
+         * 2. INSERTAR REGISTRO EN ASISTIRRESPONSABLE
+         * 3. INSERTAR REGISTRO EN PRESTAMO
+         *
+         * lUEGO COMO LOS ELEMENTOS ESTAN EN PRESTAMO
+         * 1. ACTUALIZAR LOS REGISTROS DE ELEMENTOS
+         * PRESTADOS EN LA TABLA ELEMENDEPORTIVO
+         * EN EL ESTADO DE 'Activo' A 'Prestado'
+         */
+
+        conn = await oracledb.getConnection(conn_data);
+        /**Insertar registro en tabla responsable */
+        await conn.execute(insertar_responsable, {
+            CONSECPROGRA: body.CONSECPROGRA,
+            CONSECRES: CONSECRES,
+            CODEMPLEADO: body.CODEMPLEADO,
+            CODESTU: '',
+            IDROL: DOCENTE,
+            FECHAINI: fecha_responsable,
+            FECHAFIN: fecha_responsable,
+        });
+
+        /**Insertar registro en tabla ASISTIRRESPONSABLE */
+        const fecha_asistir =
+            data.FECHAHORA.split('T')[0] +
+            ' ' +
+            data.FECHAHORA.split('T')[1] +
+            ':00';
+        console.log(fecha_asistir);
+        await conn.execute(insertar_asistir_responsable, {
+            CONSECPROGRA: body.CONSECPROGRA,
+            CONSECRES: CONSECRES,
+            CONSECASISRES: CONSECASISRES,
+            FECHAASISRES: fecha_responsable,
+            HORAASISRES: fecha_asistir,
+        });
+
+        /**Insertar en prestamo cada elemento prestado
+         * y cambiar el estado en elemendeportivo
+         */
+        for (let i of data.IDS) {
+            try {
+                await conn.execute(insertar_prestamo, {
+                    CONSECPRESTAMO: CONSECPRESTAMO,
+                    CONSECELEMENTO: i.id,
+                    CONSECPROGRA: body.CONSECPROGRA,
+                    CONSECRES: CONSECRES,
+                    CONSECASISRES: CONSECASISRES,
+                });
+                CONSECPRESTAMO += 1;
+                /** Cambiar el estado de el (los)
+                 * elemento(s) a prestado(s) */
+                await conn.execute(actualzar_estado_elemento, {
+                    IDESTADO: PRESTADO,
+                    CONSECELEMENTO: i.id,
+                });
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        CONSECASISRES += 1;
+        CONSECRES += 1;
+
+        conn.commit();
+        res.send({});
     } catch (error) {
         console.log(error);
+    } finally {
+        if (conn) {
+            try {
+                await conn.close();
+            } catch (error) {
+                console.error(error);
+            }
+        }
     }
-    // } finally {
-    //     if (conn) {
-    //         try {
-    //             //await conn.close();
-    //         } catch (error) {
-    //             console.error(error);
-    //         }
-    //     }
-    // }
 };
 
 /**

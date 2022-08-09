@@ -161,7 +161,6 @@ const App = () => {
             // Limpiar datos del formulario
             setNombreDocente('');
             setApellidoDocente('');
-            setFechaCurso('');
         }
     };
 
@@ -190,19 +189,33 @@ const App = () => {
             elemento.id = elementosSeleccionados[i];
             elementos.push({ ...elemento });
         }
-        let IDS = {
+        console.log(fechaCurso);
+        let data = {
+            CONSECPROGRA: infoCurso[0].COD,
+            CODEMPLEADO: infoCurso[0].CODEMPLEADO,
+            FECHAHORA: fechaCurso,
             IDS: elementos,
         };
 
         console.log(elementos);
-        console.log(IDS);
+        console.log(data);
 
+        const res = elementosPrestarDocente.filter((item) => {
+            return elementosSeleccionados.indexOf(item.ID) === -1;
+        });
+
+        setElementosPestarDocente(res);
+        console.log(elementosPrestarDocente);
+
+        setElementosSeleccionados([]);
         unidadDeportivaService
-            .consulta_prestar_elementos(IDS)
+            .consulta_prestar_elementos(data)
             .then((disponibles) => {
                 console.log(disponibles, 'elementos del backend');
             })
             .catch((error) => console.log(error.message));
+
+        alert('Exito en el proceso de prestamo');
     };
 
     /**################################################################*/

@@ -1,0 +1,8 @@
+delete from prestamo where consecprestamo = 0 and consecprestamo = 1;
+delete from asistirresponsable where consecprogra = 9;
+delete from responsable where consecprogra = 9;
+UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 7;
+UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 114;
+commit work;
+
+elementos 7 y 114
