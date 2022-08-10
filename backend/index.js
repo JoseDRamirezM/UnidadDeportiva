@@ -1,8 +1,12 @@
 const express = require('express');
 const oracledb = require('oracledb');
+const pdf = require('html-pdf');
 const app = express();
 
 app.use(express.json());
+
+//**PAra descargar pdf */
+app.use('/reportes', express.static('reportes'));
 
 /** Constantes de cargos de empleados */
 const DIRECTOR_DEPORTIVO = '1';
@@ -15,6 +19,7 @@ const ENTRENADOR = '3';
 let CONSECRES = 0;
 let CONSECASISRES = 0;
 let CONSECPRESTAMO = 0;
+let CONMIEMEQUIPO = 0;
 
 /** Constantes del estado de los elementos */
 const ACTIVO = '1';
@@ -50,10 +55,11 @@ SELECT * FROM
         AND EA.FECHAFINCAR IS NULL
         AND A.CODEMPLEADO = :id
     ORDER BY EA.FECHACARGO
-) WHERE ROWNUM = 1`;
+) WHERE ROWNUM = 1
+`;
 
 /**
- * Funcion que consulta si en el momento de la consulta
+ * consulta si en el momento de la consulta
  * día y hora, hay un curso para un docente en específico
  */
 const consulta_curso_docente = `
@@ -79,8 +85,12 @@ WHERE P.IDDEPORTE = D.IDDEPORTE
     AND LOWER(E.NOMESPACIO) LIKE :sede
     AND (LOWER(DOC.NOMEMPLEADO||' '||DOC.APELLEMPLEADO))
     LIKE :nomempleado
-    AND LOWER(D.NOMDIA) LIKE :dia`;
+    AND LOWER(D.NOMDIA) LIKE :dia
+`;
 
+/**
+ * CONSULTA PARA DETERMINAR LOS ELEMENTOS PARA PRESTAR AL DOCENTE
+ */
 const consulta_elementos_docente = `
 SELECT ED.CONSECELEMENTO ID, TE.DESCTIPOELEMENTO TIPO, 
     E.DESCESTADO ESTADO, D.NOMDEPORTE DEPORTE, ES.NOMESPACIO ESPACIO
@@ -94,8 +104,12 @@ WHERE ED.IDESTADO = E.IDESTADO
     AND ESD.CODESPACIO = ES.CODESPACIO
     AND LOWER(E.DESCESTADO) LIKE 'activo'
     AND LOWER(D.NOMDEPORTE) LIKE :deporte
-    AND LOWER(ES.NOMESPACIO) LIKE :sede`;
+    AND LOWER(ES.NOMESPACIO) LIKE :sede
+`;
 
+/**
+ * INSERTAR EN RESPONSABLE
+ */
 const insertar_responsable = `
 INSERT INTO RESPONSABLE
     (CONSECPROGRA, CONSECRES, CODEMPLEADO, CODESTU,
@@ -108,6 +122,9 @@ VALUES
     )
 `;
 
+/**
+ * INSERTAR EN ASISTIR RESPONSABLE
+ */
 const insertar_asistir_responsable = `
 INSERT INTO ASISTIRRESPONSABLE
     (CONSECPROGRA, CONSECRES, CONSECASISRES,
@@ -120,6 +137,9 @@ VALUES
     )
 `;
 
+/**
+ * INSERTAR EN PRESTAMO
+ */
 const insertar_prestamo = `
 INSERT INTO PRESTAMO
     (CONSECPRESTAMO,CONSECELEMENTO,CONSECPROGRA,
@@ -131,11 +151,71 @@ VALUES
     )
 `;
 
+/**
+ * INSERTAR EN PRESTAMO
+ */
 const actualzar_estado_elemento = `
 UPDATE ELEMENDEPORTIVO
 SET IDESTADO = :IDESTADO
 WHERE CONSECELEMENTO = :CONSECELEMENTO
 `;
+
+/**
+ * CONSULTAR LOS EQUIPOS DEL ESTUDIANTE
+ */
+const consulta_equipo_estudiante = `
+SELECT E.CODESTU CODIGO,  P.CONSECPROGRA CONSECPROGRA, 
+    P.IDHORA HORAINICIO, P.HOR_IDHORA HORAFIN,
+    D.NOMDIA DIA, ES.NOMESPACIO SEDE,
+    EQ.CONSEEQUIPO CODEQUIPO, ME.ITEMMIEMBRO,
+    DE.NOMDEPORTE
+FROM ESTUDIANTE E, PROGRAMACION P, HORA H, MIEMBROEQUIPO ME,
+    DIA D, PERIODO PE, EQUIPO EQ, DEPORTE DE, ESPACIO ES
+WHERE E.CODESTU = ME.CODESTU 
+    AND P.CODESPACIO = ES.CODESPACIO
+    AND ME.CONSEEQUIPO = EQ.CONSEEQUIPO
+    AND EQ.IDDEPORTE = DE.IDDEPORTE
+    AND P.IDDEPORTE = DE.IDDEPORTE
+    AND P.IDPERIODO = PE.IDPERIODO
+    AND P.IDHORA = H.IDHORA
+    AND P.IDDIA = D.IDDIA
+    AND E.CODESTU LIKE :CODESTU
+    AND LOWER(ES.NOMESPACIO) LIKE :SEDE
+    AND EQ.CONSEEQUIPO = :CONSEEQUIPO
+    AND LOWER(D.NOMDIA) LIKE :DIA
+`;
+
+const insertar_asistencia_miembro_equipo = `
+INSERT INTO ASISMIEMBROEQUIPO
+    (CONSECPROGRA, CONMIEMEQUIPO, CONSEEQUIPO, ITEMMIEMBRO)
+VALUES
+    (:CONSECPROGRA, :CONMIEMEQUIPO, :CONSEEQUIPO, :ITEMMIEMBRO)
+`;
+
+const consulta_reporte_miembros_equipo = `
+SELECT E.CODESTU COD, D.NOMDEPORTE, ES.NOMESPACIO, SUM (
+    CASE 
+        WHEN LENGTH(P.IDHORA) = 4 AND LENGTH(P.HOR_IDHORA) = 4
+            THEN  TO_NUMBER(SUBSTR(P.HOR_IDHORA,0,1)) - TO_NUMBER(SUBSTR(P.IDHORA,0,1))
+        ELSE TO_NUMBER(SUBSTR(P.HOR_IDHORA,0,2)) - TO_NUMBER(SUBSTR(P.IDHORA,0,2))
+        END ) AS SUMAHORAS
+    FROM PROGRAMACION P, ASISMIEMBROEQUIPO AM,
+        MIEMBROEQUIPO ME, ESTUDIANTE E,
+        EQUIPO EQ, DEPORTE D, ESP_DEP ED,
+        ESPACIO ES, TIPOESPACIO TE
+    WHERE P.CONSECPROGRA = AM.CONSECPROGRA
+        AND AM.ITEMMIEMBRO = ME.ITEMMIEMBRO
+        AND ME.CODESTU = E.CODESTU
+        AND EQ.CONSEEQUIPO = ME.CONSEEQUIPO
+        AND D.IDDEPORTE = EQ.IDDEPORTE
+        AND D.IDDEPORTE = ED.IDDEPORTE
+        AND ES.CODESPACIO = E.CODESPACIO
+        AND ES.IDTIPOESPACIO = TE.IDTIPOESPACIO
+        AND LOWER(ES.NOMESPACIO) LIKE :SEDE
+    GROUP BY E.CODESTU, D.NOMDEPORTE, ES.NOMESPACIO
+`;
+
+//########################################################################################################################################
 
 /**
  * Función que se encarga de determinar si el código de usuario
@@ -290,6 +370,11 @@ const consultar_elementos_docente = async (req, res) => {
     }
 };
 
+/**
+ * FUNCION QUE MANJA EL PRESTAMOS DE ELEMENTOS
+ * @param {*} req
+ * @param {*} res
+ */
 const prestar_elementos = async (req, res) => {
     try {
         /**
@@ -395,6 +480,216 @@ const prestar_elementos = async (req, res) => {
 };
 
 /**
+ * FUNCION QUE MANEJA LA LÓGICA PARA REGISTRAR LA ASISTENCIA
+ * DEL MIEMBRO DE UN EQUIPO
+ * @param {*} req
+ * @param {*} res
+ */
+const asistencia_miembro_equipo = async (req, res) => {
+    try {
+        /**
+         * Obtener datos necesarios para la consulta
+         */
+        const body = req.body;
+        const data = {
+            CODESTU: body.CODESTU.toString(),
+            SEDE: body.SEDE.toString().toLowerCase(),
+            CONSEEQUIPO: body.CONSEEQUIPO,
+            DIA: body.DIA.toString().toLowerCase(),
+            FECHA: body.FECHA.toString(),
+        };
+
+        console.log(data);
+        fecha = new Date(data.FECHA);
+        console.log(fecha.getMinutes());
+        /**REALIZAR CONSULTA DE LOS ENTRENAMIENTOS */
+        conn = await oracledb.getConnection(conn_data);
+        result = await conn.execute(
+            consulta_equipo_estudiante,
+            [data.CODESTU, data.SEDE, data.CONSEEQUIPO, data.DIA],
+            result_format
+        );
+        const rs = result.resultSet;
+        let rows;
+        do {
+            rows = await rs.getRows(100);
+            console.log(rows.length);
+            console.log(rows);
+        } while (rows.length === 100);
+
+        /** VARIABLE QUE DETERMINA SI EL ESTUDIANTE ESTA A TIEMPO */
+        let esta_a_tiempo = false;
+
+        if (rows[0] /** Si hay algún entrenamiento en ese día */) {
+            // Obtener hora, minutos actuales y la hora de inicio del entrenamiento
+            const hora_actual = fecha.getHours();
+            const minutos_actual = fecha.getMinutes();
+            const hora_inicio = parseInt(rows[0].HORAINICIO);
+
+            /** Funcion para determinar si el tiempo actual
+             * esta 15 minutos antes o despues de la
+             * hora de inicio
+             */
+            const a_tiempo = (hora_inicio, hora_actual, minutos_actual) => {
+                if (hora_inicio === hora_actual && minutos_actual <= 15) {
+                    return true;
+                } else if (
+                    hora_inicio === hora_actual + 1 &&
+                    minutos_actual >= 45
+                ) {
+                    return true;
+                } else return false;
+            };
+
+            esta_a_tiempo = a_tiempo(hora_inicio, hora_actual, minutos_actual);
+
+            if (esta_a_tiempo) {
+                //Si esta a tiempo inserte registro en asismiembroequipo
+                try {
+                    console.log('insertar asistencia miembro equipo');
+                    await conn.execute(insertar_asistencia_miembro_equipo, {
+                        CONSECPROGRA: rows[0].CONSECPROGRA,
+                        CONMIEMEQUIPO: CONMIEMEQUIPO,
+                        CONSEEQUIPO: rows[0].CODEQUIPO,
+                        ITEMMIEMBRO: rows[0].ITEMMIEMBRO,
+                    });
+                    conn.commit();
+                    CONMIEMEQUIPO += 1;
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        }
+        /** Regresar si se registró la asistencia o no al frontend */
+        res.send({
+            status: esta_a_tiempo ? true : false,
+        });
+        await rs.close();
+    } catch (error) {
+        console.log(error);
+    } finally {
+        if (conn) {
+            try {
+                await conn.close();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    }
+};
+
+const reporte_miembros_equipo = async (req, res) => {
+    try {
+        /**
+         * Obtener datos necesarios para la consulta
+         */
+        const body = req.body;
+        const data = {
+            SEDE: body.SEDE.toString().toLowerCase(),
+        };
+
+        console.log(data);
+        /**REALIZAR CONSULTA DE LOS ENTRENAMIENTOS */
+        conn = await oracledb.getConnection(conn_data);
+        result = await conn.execute(
+            consulta_reporte_miembros_equipo,
+            [data.SEDE],
+            result_format
+        );
+        const rs = result.resultSet;
+        let rows;
+        do {
+            rows = await rs.getRows(100);
+            console.log(rows.length);
+            console.log(rows);
+        } while (rows.length === 100);
+
+        const asistencia_miembros = rows.map((registro) => {
+            return `
+            <tr>
+                <td>${registro.COD}</td>
+                <td>${registro.NOMDEPORTE}</td>
+                <td>${registro.NOMESPACIO}</td>
+                <td>${registro.SUMAHORAS}</td>
+            </tr>`;
+        });
+
+        console.log(asistencia_miembros[0]);
+
+        let datos_tabla = '';
+        for (fila of asistencia_miembros) {
+            datos_tabla += fila;
+        }
+
+        const string_html = `
+        <!doctype html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        table,
+                        table td {
+                            border: 1px solid black;
+                        }
+                        
+                        td {
+                            height: 80px;
+                            width: 160px;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                    </style>
+                    <title>REPORTE ASISTENCIA MIEMBROS EQUIPOS</title>
+                </head>
+                <body>
+                    <h1>REPORTE ASISTENCIA MIEMBROS EQUIPOS</h1>
+                    <table>
+                    <thead>
+                        <tr>
+                            <th>CODIGO</th>
+                            <th>EQUIPO</th>
+                            <th>SEDE</th>
+                            <th>HORAS ASISTIDAS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${datos_tabla}
+                    </tbody>
+                    </table>
+                </body>
+            </html>
+        
+        `;
+        console.log(string_html);
+        const archivo = await pdf
+            .create(string_html)
+            .toFile('./reportes/reporteMiembrosEquipo.pdf', (err, res) => {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log(res);
+                }
+            });
+
+        /** Regresar si se registró la asistencia o no al frontend */
+        res.send({
+            status: archivo ? true : false,
+        });
+        await rs.close();
+    } catch (error) {
+        console.log(error);
+    } finally {
+        if (conn) {
+            try {
+                await conn.close();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    }
+};
+
+/**
  * Endpoint que se encarga de la autenticación de usuario
  */
 app.post('/api/login', async (request, response) => {
@@ -411,6 +706,20 @@ app.post('/api/docente/elementos', async (request, response) => {
 
 app.post('/api/docente/elementos/prestar', async (request, response) => {
     prestar_elementos(request, response);
+});
+
+app.post('/api/miembroEquipo/asistencia', async (request, response) => {
+    asistencia_miembro_equipo(request, response);
+});
+
+app.post('/api/reportes/miembrosEquipo', async (request, response) => {
+    reporte_miembros_equipo(request, response);
+});
+
+app.get('/api/reportes/pdf', async (req, res) => {
+    res.download('reportes/reporteMiembrosEquipo.pdf', (err) => {
+        console.log(err);
+    });
 });
 
 const PORT = 3001;

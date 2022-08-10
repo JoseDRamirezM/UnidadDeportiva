@@ -1,0 +1,7 @@
+
+POST http://localhost:3001/api/reportes/miembrosEquipo
+Content-Type: application/json
+
+{
+    "SEDE": "Sede Macarena"
+}

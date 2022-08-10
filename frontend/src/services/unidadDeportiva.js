@@ -36,10 +36,28 @@ const consulta_prestar_elementos = (elementos) => {
     });
 };
 
+const consulta_miembro_equipo = (data) => {
+    const request = axios.post(baseUrl + '/miembroEquipo/asistencia', data);
+    return request.then((response) => {
+        console.log(response.data, 'asistencia miembro');
+        return response.data;
+    });
+};
+
+const generar_reporte_equipos = (data) => {
+    const request = axios.post(baseUrl + '/reportes/miembrosEquipo', data);
+    return request.then((response) => {
+        console.log(response.data, 'asistencia miembro');
+        return response.data;
+    });
+};
+
 // eslint-disable-next-line
 export default {
     login,
     consulta_docente,
     consulta_elementos_docente,
     consulta_prestar_elementos,
+    consulta_miembro_equipo,
+    generar_reporte_equipos,
 };

@@ -221,16 +221,89 @@ const App = () => {
     /**################################################################*/
 
     /**################# ASISTENCIA MIEMBRO EQUIPO ###########################*/
+
+    const equipos = [
+        {
+            label: 'Atletismo',
+            value: 1,
+        },
+        {
+            label: 'Tenis Mesa',
+            value: 3,
+        },
+        {
+            label: 'Natacion',
+            value: 4,
+        },
+        {
+            label: 'Voleivol',
+            value: 5,
+        },
+        {
+            label: 'Futbol',
+            value: 6,
+        },
+        {
+            label: 'Futbol sala',
+            value: 7,
+        },
+        {
+            label: 'Aerobicos',
+            value: 9,
+        },
+        {
+            label: 'Boxeo',
+            value: 10,
+        },
+        {
+            label: 'Artes Marciales',
+            value: 11,
+        },
+        {
+            label: 'Gimnasia Olimpica',
+            value: 12,
+        },
+    ];
+
     const [codEstudiante, setCodEstudiante] = useState('');
+    const [codEquipo, setCodEquipo] = useState(1);
 
     const handleCodEstudiante = (event) => {
         setCodEstudiante(event.target.value);
     };
 
+    const handleCodEquipo = (event) => {
+        setCodEquipo(event.target.value);
+    };
+
     const handleAsistenciaEstudiante = async (event) => {
         event.preventDefault();
-        if (codEstudiante) {
-            console.log(codEstudiante);
+        if (codEstudiante && codEquipo && fechaCurso) {
+            // Obtener el día de la semana a partir de la fecha
+            const diaSemana = intDiaSemana(new Date(fechaCurso).getDay());
+            // Objeto con los datos necesarios para la consulta
+            const data = {
+                CODESTU: codEstudiante,
+                SEDE: autorizado[0].SEDE,
+                CONSEEQUIPO: codEquipo,
+                DIA: diaSemana,
+                FECHA: fechaCurso,
+            };
+            console.log(data);
+            // Llamado al backend con la información
+            unidadDeportivaService
+                .consulta_miembro_equipo(data)
+                .then((status) => {
+                    console.log(status, 'miembro asistencia');
+                    if (status.status) {
+                        alert('Asistencia registrada');
+                    } else {
+                        alert(
+                            'Llego tarde o no hay entrenamientos registrados'
+                        );
+                    }
+                })
+                .catch((error) => console.log(error.message));
         }
     };
     /**#######################################################################*/
@@ -246,6 +319,25 @@ const App = () => {
             clearInterval(timer);
         };
     });
+
+    /**################################################################*/
+
+    /**################# REPORTES ###########################*/
+    const handleGenerarReporte = (event) => {
+        event.preventDefault();
+        if (autorizado[0].SEDE) {
+            const data = {
+                SEDE: autorizado[0].SEDE,
+            };
+            console.log(autorizado[0].SEDE);
+            unidadDeportivaService
+                .generar_reporte_equipos(data)
+                .then((status) => {
+                    console.log('safe to download');
+                })
+                .catch((error) => console.log(error.message));
+        }
+    };
 
     /**################################################################*/
 
@@ -290,6 +382,7 @@ const App = () => {
                                 <Principal
                                     autorizado={autorizado}
                                     fechaHora={fechaHora}
+                                    handleGenerarReporte={handleGenerarReporte}
                                 />
                             }
                         />
@@ -344,9 +437,14 @@ const App = () => {
                                         handleCodEstudiante={
                                             handleCodEstudiante
                                         }
+                                        codEquipo={codEquipo}
+                                        handleCodEquipo={handleCodEquipo}
+                                        equipos={equipos}
                                         handleAsistenciaEstudiante={
                                             handleAsistenciaEstudiante
                                         }
+                                        fechaCurso={fechaCurso}
+                                        handleFechaCurso={handleFechaCurso}
                                     />
                                 ) : (
                                     <Navigate replace to="/login" />

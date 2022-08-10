@@ -1,8 +1,36 @@
-delete from prestamo where consecprestamo = 0 and consecprestamo = 1;
-delete from asistirresponsable where consecprogra = 9;
-delete from responsable where consecprogra = 9;
-UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 7;
-UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 114;
+/** INCIAR SESION
+
+com AUXILIAR codigos 7 u 8
+
+como DIRECTOR codigos 1 o 2
+
+/** PRESTAMO de prof EGAN BERNAL LUNES 6-8
+
+Realizar el flujo y despues en la base ejecutar:
+
+delete from prestamo where consecprestamo = 0;
+delete from prestamo where consecprestamo = 1;
+delete from asistirresponsable where consecprogra = 3;
+delete from responsable where consecprogra = 3;
+UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 117;
+UPDATE ELEMENDEPORTIVO SET IDESTADO = '1' WHERE CONSECELEMENTO = 122;
 commit work;
 
 elementos 7 y 114
+
+/** ASISTENCIA MIEMBRO EQUIPO
+
+Codigo : 20221001
+LUNES 6 - 8
+MIERCOLES 12-13
+
+20203001
+LUNES 6 - 8
+MIERCOLES 12-13
+
+Realizar el flujo y luego en la base ejecutar:
+
+DELETE FROM ASISMIEMBROEQUIPO WHERE CONMIEMEQUIPO = 0;
+DELETE FROM ASISMIEMBROEQUIPO WHERE CONMIEMEQUIPO = 1;
+DELETE FROM ASISMIEMBROEQUIPO WHERE CONMIEMEQUIPO = 2;
+COMMIT WORK;

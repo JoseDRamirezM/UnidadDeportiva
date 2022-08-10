@@ -1,6 +1,8 @@
 import React from 'react';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
+import Form from 'react-bootstrap/Form';
+import Button from 'react-bootstrap/Button';
 
 /**
  * Este componente renderiza la página principal
@@ -57,6 +59,32 @@ const Principal = (props) => {
         <div>
             {/* Si el usuario está autenticado */}
             {usuario && renderEmpleado()}
+            {usuario && usuario.CARGO === 'Director Deportivo' && (
+                <Container spacing={2} justify="center">
+                    <Card style={{ width: '30rem' }}>
+                        <Card.Body>
+                            <Card.Title>Descarga de reportes</Card.Title>
+                            <Card.Text>
+                                Click en el boton para descargar el reporte
+                            </Card.Text>
+                            <Card.Text>
+                                Reporte asistencia estudiantes equipos
+                            </Card.Text>
+                            <Form onSubmit={props.handleGenerarReporte}>
+                                <Button variant="primary" type="submit">
+                                    Generar
+                                </Button>
+                            </Form>
+                            <Card.Link
+                                href="http://localhost:3001/api/reportes/pdf"
+                                download
+                            >
+                                Obtener archivo
+                            </Card.Link>
+                        </Card.Body>
+                    </Card>
+                </Container>
+            )}
             {/* Si el usuario NO está autenticado */}
             {!usuario && (
                 <Container spacing={2} justify="center">
